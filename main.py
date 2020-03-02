@@ -1,6 +1,12 @@
-lines = open("text.txt").readlines()
+#!/usr/bin/env python3
+import sys
+import os
 
-# remove comments (lines starting with #) (like python)
-lines = [l if not l.strip().startswith("#") else "\n" for l in lines]
-s = "".join(lines)
-print(s)
+import cv2
+import torch
+
+
+
+if __name__ == '__main__':
+    a = torch.tensor([2,2])
+    print(a.shape)

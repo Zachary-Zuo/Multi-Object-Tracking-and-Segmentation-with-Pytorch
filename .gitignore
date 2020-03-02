@@ -5,3 +5,6 @@ logs
 slurm*.out
 __pycache__
 .idea
+core/
+datasets/
+network/
