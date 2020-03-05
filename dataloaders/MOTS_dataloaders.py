@@ -7,6 +7,9 @@ from roi_align import RoIAlign
 def format_box(bbox):
     return torch.Tensor([[bbox[0], bbox[1], bbox[0]+ bbox[2], bbox[1] + bbox[3]]])
 
+def pass_box(bbox):
+    return torch.Tensor([bbox[0], bbox[1], bbox[2], bbox[3]])
+
 class MOTSDataset(Dataset):
     def __init__(self, inputRes=None,
                  seqs_list_file=r'E:\Challenge\MOTSChallenge\train\instances_txt',
@@ -47,18 +50,18 @@ class MOTSDataset(Dataset):
             mask = mask.contiguous()
 
             boxes = format_box(rletools.toBbox(obj.mask))
-
+            bbox = pass_box(rletools.toBbox(obj.mask))
             box_index = torch.tensor([0], dtype=torch.int)
 
-            crop_height = 196
-            crop_width = 84
+            crop_height = int(bbox[3])
+            crop_width = int(bbox[2])
             roi_align = RoIAlign(crop_height, crop_width, 0.25)
 
             crops = roi_align(mask, boxes, box_index)
             crops=crops.squeeze()
 
             mask_list.append(crops)
-            bbox_list.append(format_box(rletools.toBbox(obj.mask)))
+            bbox_list.append(bbox)
 
 
         if self.transform is not None:

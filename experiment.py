@@ -17,10 +17,6 @@ import torchvision
 from roi_align import RoIAlign
 from roi_align import CropAndResize
 
-
-
-
-A=torch.ones(2,3) #2x3的张量（矩阵）
-
-for i in A:
-    print(i)
+print(math.ceil(11.5))
+print(math.ceil(11.2))
+print(math.ceil(11.3))

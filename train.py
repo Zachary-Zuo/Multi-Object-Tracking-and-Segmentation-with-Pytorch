@@ -20,7 +20,11 @@ from network.backbone import ResNet
 from network.seghead import SegHead
 import dataloaders.MOTS_dataloaders as ms
 
-
+def get_img_size(sequence):
+    if sequence==5:
+        return [640,480]
+    else:
+        return [1920,1080]
 
 def main():
     gpu_id = 0
@@ -38,23 +42,24 @@ def main():
     lr_S = 1e-4
     wd = 0.0002
 
-    sequence = 2
+    sequence = 5
 
     save_root_dir = "models"
-    save_dir = os.path.join(save_root_dir,str(sequence))
+    # save_dir = os.path.join(save_root_dir,"{:04}".format(sequence))
+    save_dir = "models"
     if not os.path.exists(save_dir):
         os.makedirs(os.path.join(save_dir))
 
     backbone = ResNet()
-    seghead=SegHead(1920,1080)
+    seghead=SegHead(get_img_size(sequence))
     BackBoneName = "ResNet"
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(0) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(5) + '.pth'),
                        map_location=lambda storage, loc: storage))
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(0) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(5) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     # Logging into Tensorboard
@@ -69,9 +74,9 @@ def main():
     optimizerB = optim.Adam(backbone.parameters(), lr=lr_B, weight_decay=wd)
     optimizerS = optim.Adam(seghead.parameters(), lr=lr_S, weight_decay=wd)
 
-    ms_train = ms.MOTSDataset()
+    ms_train = ms.MOTSDataset(sequence=sequence)
 
-    trainloader = DataLoader(ms_train, batch_size=batch_size)  # change to 1.2.0
+    trainloader = DataLoader(ms_train, batch_size=batch_size,num_workers=2)  # change to 1.2.0
 
     num_img_tr = len(trainloader)
     # criterion = nn.BCELoss().to(device)
@@ -92,6 +97,14 @@ def main():
             losses = []
             for pre,gt in zip(out,gts):
                 losses.append(F.binary_cross_entropy_with_logits(pre,gt))
+
+            # for pre, gt in zip(out, gts):
+            #     gt=gt.cpu().detach().numpy()
+            #     pre = pre.cpu().detach().numpy()
+            #     plt.imshow(pre)
+            #     plt.show()
+            #     plt.imshow(gt)
+            #     plt.show()
 
             loss = sum(losses)
             backbone.zero_grad()
