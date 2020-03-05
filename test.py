@@ -163,17 +163,28 @@ if __name__=='__main__':
         box_index = torch.tensor([0], dtype=torch.int)  # index of bbox in batch
 
         # RoIAlign layer with crop sizes:
-        crop_height = 388
-        crop_width = 164
+        crop_height = 196
+        crop_width = 84
         roi_align = RoIAlign(crop_height, crop_width, 0.25)
 
+        print(mask.shape)
         # make crops:
         crops = roi_align(mask, boxes, box_index)  # 输入必须是tensor，不能是numpy
+        plt.imshow(crops[0][0])
+        plt.show()
+        print(crops.shape)
+
+        # RoIAlign layer with crop sizes:
+        boxes = torch.Tensor([[0,0,84,196]])
+        print(rletools.toBbox(obj.mask))
+        crop_height = int(rletools.toBbox(obj.mask)[3])
+        crop_width = int(rletools.toBbox(obj.mask)[2])
+        roi_align = RoIAlign(crop_height, crop_width)
+        crops = roi_align(crops.clone(), boxes, box_index)  # 输入必须是tensor，不能是numpy
 
         # plt.imshow(img[0][0])
         # plt.show()
         plt.imshow(crops[0][0])
-        print(crops[0][0])
         plt.show()
         break
 

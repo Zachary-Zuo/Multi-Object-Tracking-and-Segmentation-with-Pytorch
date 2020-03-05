@@ -2,6 +2,7 @@ import cv2
 from torch.utils.data import Dataset
 from tools.mots_tools.io import *
 import torch
+from roi_align import RoIAlign
 
 def format_box(bbox):
     return torch.Tensor([[bbox[0], bbox[1], bbox[0]+ bbox[2], bbox[1] + bbox[3]]])
@@ -13,12 +14,13 @@ class MOTSDataset(Dataset):
                  sequence=2,
                  random_rev_thred=0.4):
 
-        self.imgPath = os.path.join(r'E:\Challenge\MOTSChallenge\train\images', "{:04}.txt".format(sequence))
+        self.imgPath = os.path.join(r'E:\Challenge\MOTSChallenge\train\images',"{:04}".format(sequence))
         filename = os.path.join(seqs_list_file, "{:04}.txt".format(sequence))
         self.instance = load_txt(filename)
         self.transform = transform
         self.inputRes = inputRes
         self.random_rev_thred = random_rev_thred
+
 
 
     def __len__(self):
@@ -27,8 +29,16 @@ class MOTSDataset(Dataset):
     def __getitem__(self, idx):
         frame=idx+1
         instance_per_frame = self.instance[frame]
-        instance_list = []
+        bbox_list = []
+        mask_list = []
+        img = os.path.join(self.imgPath, "{:06}.jpg".format(frame))
+        img = cv2.imread(img)
+        img = img[:,:,:].transpose(2, 0, 1)
+        img = np.ascontiguousarray(img, dtype=np.float32)
+        img /= 255.0
         for obj in instance_per_frame:
+            if obj.class_id!=2:
+                continue
             mask = rletools.decode(obj.mask)
             mask = torch.from_numpy(mask)
             mask = mask.float()
@@ -36,13 +46,21 @@ class MOTSDataset(Dataset):
             mask = mask[None]
             mask = mask.contiguous()
 
-            img = os.path.join(self.imgPath, "{:06}.jpg".format(frame))
-            img = cv2.imread(img)
+            boxes = format_box(rletools.toBbox(obj.mask))
 
-            instance_list.append({
-                "img":img,
-                "mask": mask,
-                "bbox": format_box(rletools.toBbox(obj.mask))
-            })
+            box_index = torch.tensor([0], dtype=torch.int)
 
-        return  instance_list
+            crop_height = 196
+            crop_width = 84
+            roi_align = RoIAlign(crop_height, crop_width, 0.25)
+
+            crops = roi_align(mask, boxes, box_index)
+            crops=crops.squeeze()
+
+            mask_list.append(crops)
+            bbox_list.append(format_box(rletools.toBbox(obj.mask)))
+
+
+        if self.transform is not None:
+            img = self.transform(img)
+        return  {"img":img,"mask":mask_list,"bbox":bbox_list}
