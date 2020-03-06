@@ -52,7 +52,8 @@ class MOTTrackDataset(Dataset):
                  sequence=2,
                  random_rev_thred=0.4):
 
-        self.imgPath = r'E:\Challenge\MOT17\test\MOT17-{:02}-DPM\img1'.format(sequence)
+        self.imgPath = r'E:\Challenge\MOTSChallenge\train\images'
+        self.imgPath = os.path.join(self.imgPath,"{:04}".format(sequence))
         self.width = 1920
         self.height = 1080
         if sequence==6 or sequence==5:

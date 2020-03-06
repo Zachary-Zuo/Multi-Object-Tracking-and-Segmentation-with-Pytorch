@@ -96,10 +96,7 @@ def main(sequence):
     file.close()
 
 if __name__ == "__main__":
-    # main(1)
-    # main(3)
-    # main(6)
-    # main(7)
-    # main(8)
-    main(12)
-    main(14)
+    main(2)
+    main(5)
+    main(9)
+    main(11)
