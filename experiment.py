@@ -17,6 +17,15 @@ import torchvision
 from roi_align import RoIAlign
 from roi_align import CropAndResize
 
-print(math.ceil(11.5))
-print(math.ceil(11.2))
-print(math.ceil(11.3))
+
+
+seqs_list_file=r'E:\Challenge\MOTSChallenge\train\instances_txt'
+filename = os.path.join(seqs_list_file,"{:04}.txt".format(2))
+instance = load_txt(filename)
+obj = instance[1][0]
+print(obj.key())
+mask = rletools.decode(obj.mask)
+print(type(mask))
+print(mask.shape)
+print(rletools.encode(mask))
+print(' '.join(["1","2","3"]))
