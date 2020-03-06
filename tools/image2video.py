@@ -1,65 +1,24 @@
-import cv2
-import os
-
-import matplotlib.pyplot as plt
-import matplotlib.pylab as pylab
-
-import requests
-from io import BytesIO
-from PIL import Image
-import numpy as np
-from maskrcnn_benchmark.config import cfg
-from mypredictor import COCODemo
 import os
 import cv2
 
-import sys
+def output_video(imgPath):
+    fps = 16
+    size = (1920,1080)
 
-def load(url):
-    """
-    Given an url of an image, downloads the image and
-    returns a PIL image
-    """
-    #response = requests.get(url)
-    #pil_image = Image.open(BytesIO(response.content)).convert("RGB")
-    pil_image = Image.open(url).convert("RGB")
-    # convert to BGR format
-    image = np.array(pil_image)[:, :, [2, 1, 0]]
-    return image
+    sequence = 14
 
-def output_video(instance):
-    fps = 8
-    size = (1242, 375)
-    sys.path.append(r"E:\Challenge\MaskR-CNN")
-    config_file = "./configs/my_test_e2e_mask_rcnn_R_50_FPN_1x.yaml"
-    cfg.merge_from_file(config_file)
-    cfg.merge_from_list(["MODEL.DEVICE", "cpu"])
-    coco_demo = COCODemo(
-        cfg,
-        confidence_threshold=0.7,
-    )
-
-
-    videowriter = cv2.VideoWriter("predictions-{}.avi".format(instance), cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), fps, size)
-
-    imgPath = os.path.join(r"E:\Challenge\KITTI_MOTS\training\image_02","{:04}".format(instance))
+    videowriter = cv2.VideoWriter("{:04}.avi".format(sequence), cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), fps, size)
 
     imgDir = os.listdir(imgPath)
 
+    for frame in range(1,len(imgDir)+1):
+        img = os.path.join(imgPath, "{:06}.jpg".format(frame))
+        image = cv2.imread(img)
 
-    for frame in range(len(imgDir)):
-        img = os.path.join(imgPath, "{:06}.png".format(frame))
-        image = load(img)
-
-        # compute predictions
-        predictions = coco_demo.run_on_opencv_image(image)
-        videowriter.write(predictions)
-        if frame%10==0:
-            print("Instance:{}   Frame:{}".format(instance,frame))
+        videowriter.write(image)
+        if frame%50==0:
+            print("Frame:{}".format(frame))
 
 
 if __name__=="__main__":
-    for i in range(21):
-        if i==9:
-            continue
-        output_video(i)
+    output_video(r"E:\Challenge\MOT17\test\MOT17-14-DPM\img1")

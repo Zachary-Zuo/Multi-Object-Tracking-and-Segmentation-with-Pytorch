@@ -26,23 +26,21 @@ def get_img_size(sequence):
     else:
         return [1920,1080]
 
-def main():
+def main(sequence):
     gpu_id = 0
     device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
 
     # # Setting other parameters
     resume_epoch = 0  # Default is 0, change if want to resume
-    nEpochs = 100  # Number of epochs for training (500.000/2079)
+    nEpochs = 6  # Number of epochs for training (500.000/2079)
     batch_size = 1
     snapshot = 10  # Store a model every snapshot epochs
     beta = 0.001
     margin = 0.3
 
-    lr_B = 1e-4
-    lr_S = 1e-4
+    lr_B = 1e-5
+    lr_S = 1e-5
     wd = 0.0002
-
-    sequence = 5
 
     save_root_dir = "models"
     # save_dir = os.path.join(save_root_dir,"{:04}".format(sequence))
@@ -63,8 +61,8 @@ def main():
                    map_location=lambda storage, loc: storage))
 
     # Logging into Tensorboard
-    # log_dir = os.path.join(save_dir, 'runs', datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname())
-    # writer = SummaryWriter(log_dir=log_dir, comment='-parent')
+    log_dir = os.path.join(save_dir, 'runs', datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname())
+    writer = SummaryWriter(log_dir=log_dir, comment='-parent')
 
     backbone=backbone.cuda()
     seghead=seghead.cuda()
@@ -118,12 +116,17 @@ def main():
                     "Iters: [%2d] time: %4.4f, loss: %.8f"
                     % (ii + num_img_tr * epoch, timeit.default_timer() - start_time,loss.item())
                 )
+            if (ii + num_img_tr * epoch) % 10 == 0:
+                writer.add_scalar('data/loss_iter', loss.item(), ii + num_img_tr * epoch)
         stop_time = timeit.default_timer()
         print("Execution time: " + str(stop_time - start_time))
         print("save models")
         torch.save(backbone.state_dict(), os.path.join(save_dir, BackBoneName + '_epoch-' + str(epoch) + '.pth'))
         torch.save(seghead.state_dict(), os.path.join(save_dir, SegHeadName + '_epoch-' + str(epoch) + '.pth'))
-    # writer.close()
+    writer.close()
 
 if __name__ == "__main__":
-    main()
+    main(2)
+    main(5)
+    main(6)
+    main(11)

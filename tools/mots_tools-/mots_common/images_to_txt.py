@@ -1,6 +1,6 @@
 import sys
-from mots_common.io import load_sequences, load_seqmap, write_sequences
-
+# from mots_common.io import load_sequences, load_seqmap, write_sequences
+from tools.mots_tools.io import load_sequences, load_seqmap, write_sequences
 
 if __name__ == "__main__":
   if len(sys.argv) != 4:
