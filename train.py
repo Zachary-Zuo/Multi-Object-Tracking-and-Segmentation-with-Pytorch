@@ -19,6 +19,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from network.backbone import ResNet
 from network.seghead import SegHead
+from network.fpn import FPN101
 import dataloaders.MOTS_dataloaders as ms
 
 def get_img_size(sequence):
@@ -34,7 +35,7 @@ def main(sequence,cfg):
 
     # # Setting other parameters
     resume_epoch = 0  # Default is 0, change if want to resume
-    nEpochs = 6  # Number of epochs for training (500.000/2079)
+    nEpochs = 1000  # Number of epochs for training (500.000/2079)
     batch_size = 1
     snapshot = 10  # Store a model every snapshot epochs
     beta = 0.001
@@ -50,16 +51,16 @@ def main(sequence,cfg):
     if not os.path.exists(save_dir):
         os.makedirs(os.path.join(save_dir))
 
-    backbone = ResNet()
-    seghead=SegHead(get_img_size(sequence),device)
-    BackBoneName = "ResNet"
+    backbone = FPN101()
+    seghead=SegHead(get_img_size(sequence))
+    BackBoneName = "FPN101"
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(5) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(999) + '.pth'),
                        map_location=lambda storage, loc: storage))
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(5) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(999) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     # Logging into Tensorboard
@@ -79,7 +80,6 @@ def main(sequence,cfg):
     trainloader = DataLoader(ms_train, batch_size=batch_size,num_workers=2)  # change to 1.2.0
 
     num_img_tr = len(trainloader)
-    # criterion = nn.BCELoss().to(device)
 
     for epoch in range(resume_epoch, nEpochs):
         start_time = timeit.default_timer()
@@ -123,8 +123,9 @@ def main(sequence,cfg):
         stop_time = timeit.default_timer()
         print("Execution time: " + str(stop_time - start_time))
         print("save models")
-        torch.save(backbone.state_dict(), os.path.join(save_dir, BackBoneName + '_epoch-' + str(epoch) + '.pth'))
-        torch.save(seghead.state_dict(), os.path.join(save_dir, SegHeadName + '_epoch-' + str(epoch) + '.pth'))
+        if epoch%50==0:
+            torch.save(backbone.state_dict(), os.path.join(save_dir, BackBoneName + '_epoch-' + str(epoch) + '.pth'))
+            torch.save(seghead.state_dict(), os.path.join(save_dir, SegHeadName + '_epoch-' + str(epoch) + '.pth'))
     writer.close()
 
 if __name__ == "__main__":

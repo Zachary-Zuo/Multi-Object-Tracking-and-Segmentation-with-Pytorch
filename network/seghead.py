@@ -9,13 +9,12 @@ from roi_align import CropAndResize
 
 class SegHead(nn.Module):
 
-    def __init__(self,img_size,device):
+    def __init__(self,img_size):
         super(SegHead, self).__init__()
         self.img_height=img_size[1]
         self.img_width=img_size[0]
         self.feature_height=math.ceil(self.img_height/16)
         self.feature_width = math.ceil(self.img_width / 16)
-        self.device = device
 
         crop_height = 28
         crop_width = 14
@@ -34,23 +33,29 @@ class SegHead(nn.Module):
 
 
 
-    def forward(self,featuremap,bbox_list):
+    def forward(self,fms,bbox_list):
         x=[]
         for bbox in bbox_list:
-            bbox = bbox.squeeze()
-            boxes = self.format_box(bbox).cuda(self.device)
-            crops = self.roi_align(featuremap, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
-            crops=self.seg(crops)
+            out = []
+            for fm in fms:
+                fw,fh = fm.shape[-2:]
+                bbox = bbox.squeeze()
+                boxes = self.format_box(bbox,fw,fh).cuda()
+                crops = self.roi_align(fm, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
+                out.append(crops)
+            output = torch.cat(out,dim=1)
+            crops=self.seg(output)
             zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
             crops = zoom_roi_align(crops, self.zoomboxes, self.box_index)
 
             x.append(crops.squeeze())
+            break
         return x
 
 
 
-    def format_box(self,bbox):
-        return torch.Tensor([[bbox[0] / self.img_height * self.feature_height,
-                              bbox[1] / self.img_width * self.feature_width,
-                              (bbox[2]+bbox[0]) / self.img_height * self.feature_height,
-                              (bbox[3]+bbox[1]) / self.img_width * self.feature_width]])
+    def format_box(self,bbox,fw,fh):
+        return torch.Tensor([[bbox[0] / self.img_height * fh,
+                              bbox[1] / self.img_width * fw,
+                              (bbox[2]+bbox[0]) / self.img_height * fh,
+                              (bbox[3]+bbox[1]) / self.img_width * fw]])
