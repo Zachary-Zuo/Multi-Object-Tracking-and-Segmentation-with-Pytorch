@@ -47,12 +47,14 @@ def load_MOT_txt(path,width,height):
 
 class MOTTrackDataset(Dataset):
     def __init__(self, inputRes=None,
-                 seqs_list_file=r'E:\Challenge\Multi-Object-Tracking-and-Segmentation-with-Pytorch\results',
+                 # seqs_list_file=r'E:\Challenge\Multi-Object-Tracking-and-Segmentation-with-Pytorch\results',
+                 seqs_list_file='/home/zuochenyu/codes/Multi-Object-Tracking-and-Segmentation-with-Pytorch/results',
                  transform=None,
                  sequence=2,
                  random_rev_thred=0.4):
 
-        self.imgPath = r'E:\Challenge\MOTSChallenge\train\images'
+        # self.imgPath = r'E:\Challenge\MOTSChallenge\train\images'
+        self.imgPath = '/home/zuochenyu/datasets/MOTSChallenge/train/images'
         self.imgPath = os.path.join(self.imgPath,"{:04}".format(sequence))
         self.width = 1920
         self.height = 1080

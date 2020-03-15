@@ -12,6 +12,7 @@ import torch
 import torch.optim as optim
 from torchvision import transforms
 from torch.utils.data import DataLoader
+import argparse
 import matplotlib.pyplot as plt
 import torch.nn as nn
 
@@ -26,9 +27,10 @@ def get_img_size(sequence):
     else:
         return [1920,1080]
 
-def main(sequence):
-    gpu_id = 0
+def main(sequence,cfg):
+    gpu_id = cfg.gpu_id
     device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
+    torch.cuda.set_device(gpu_id)
 
     # # Setting other parameters
     resume_epoch = 0  # Default is 0, change if want to resume
@@ -49,7 +51,7 @@ def main(sequence):
         os.makedirs(os.path.join(save_dir))
 
     backbone = ResNet()
-    seghead=SegHead(get_img_size(sequence))
+    seghead=SegHead(get_img_size(sequence),device)
     BackBoneName = "ResNet"
     SegHeadName = "seghead"
 
@@ -64,8 +66,8 @@ def main(sequence):
     log_dir = os.path.join(save_dir, 'runs', datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname())
     writer = SummaryWriter(log_dir=log_dir, comment='-parent')
 
-    backbone=backbone.cuda()
-    seghead=seghead.cuda()
+    backbone=backbone.cuda(device)
+    seghead=seghead.cuda(device)
 
 
     # Use the following optimizer
@@ -86,11 +88,11 @@ def main(sequence):
             inputs, bbox,gts = sample_batched["img"], sample_batched["bbox"],sample_batched["mask"]
 
             inputs.requires_grad_()
-            inputs = inputs.cuda()
+            inputs = inputs.cuda(device)
             feature = backbone.forward(inputs)
 
             out = seghead(feature,bbox)
-            gts = [gt.squeeze().cuda() for gt in gts]
+            gts = [gt.squeeze().cuda(device) for gt in gts]
 
             losses = []
             for pre,gt in zip(out,gts):
@@ -126,7 +128,11 @@ def main(sequence):
     writer.close()
 
 if __name__ == "__main__":
-    main(2)
-    main(5)
-    main(6)
-    main(11)
+    parser = argparse.ArgumentParser(prog='train.py')
+    parser.add_argument('--gpu_id', type=int, default=0, help='tracking buffer')
+    opt = parser.parse_args()
+    for i in range(100):
+        main(2,opt)
+        main(5,opt)
+        main(9,opt)
+        main(11,opt)

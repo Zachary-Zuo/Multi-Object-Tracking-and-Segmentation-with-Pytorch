@@ -12,12 +12,14 @@ def pass_box(bbox):
 
 class MOTSDataset(Dataset):
     def __init__(self, inputRes=None,
-                 seqs_list_file=r'E:\Challenge\MOTSChallenge\train\instances_txt',
+                 seqs_list_file='/home/zuochenyu/datasets/MOTSChallenge/train/instances_txt',
+                 # seqs_list_file=r'E:\Challenge\MOTSChallenge\train\instances_txt',
                  transform=None,
                  sequence=2,
                  random_rev_thred=0.4):
 
-        self.imgPath = os.path.join(r'E:\Challenge\MOTSChallenge\train\images',"{:04}".format(sequence))
+        # self.imgPath = os.path.join(r'E:\Challenge\MOTSChallenge\train\images',"{:04}".format(sequence))
+        self.imgPath = os.path.join('/home/zuochenyu/datasets/MOTSChallenge/train/images', "{:04}".format(sequence))
         filename = os.path.join(seqs_list_file, "{:04}.txt".format(sequence))
         self.instance = load_txt(filename)
         self.transform = transform

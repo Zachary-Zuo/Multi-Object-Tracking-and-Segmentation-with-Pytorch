@@ -9,12 +9,13 @@ from roi_align import CropAndResize
 
 class SegHead(nn.Module):
 
-    def __init__(self,img_size):
+    def __init__(self,img_size,device):
         super(SegHead, self).__init__()
         self.img_height=img_size[1]
         self.img_width=img_size[0]
         self.feature_height=math.ceil(self.img_height/16)
         self.feature_width = math.ceil(self.img_width / 16)
+        self.device = device
 
         crop_height = 28
         crop_width = 14
@@ -37,7 +38,7 @@ class SegHead(nn.Module):
         x=[]
         for bbox in bbox_list:
             bbox = bbox.squeeze()
-            boxes = self.format_box(bbox).cuda()
+            boxes = self.format_box(bbox).cuda(self.device)
             crops = self.roi_align(featuremap, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
             crops=self.seg(crops)
             zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)

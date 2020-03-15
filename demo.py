@@ -75,6 +75,7 @@ def main(sequence):
 
             out = seghead(feature,bbox)
 
+            background = np.zeros_like(inputs[0][0].cpu())
             for pre,box,track_id in zip(out,bbox,track_list):
                 mask = np.zeros_like(inputs[0][0].cpu())
                 box = box.squeeze()
@@ -83,11 +84,12 @@ def main(sequence):
                 temp = mask[box[1]:box[1]+box[3],box[0]:box[0]+box[2]]
                 pre = pre.cpu().detach().numpy()
                 pre=normalization(pre)
-                # print(temp.shape)
-                # print(pre.shape)
-                # print(box)
-                # print('-'*20)
                 temp[pre>0.5] = 1
+                background[mask>0]=int(track_id)
+
+            for id in track_id:
+                mask = np.zeros_like(inputs[0][0].cpu())
+                mask[background==id]=1
                 mask = np.asfortranarray(mask)
                 mask = mask.astype(np.uint8)
                 rle = rletools.encode(mask)
