@@ -58,3 +58,21 @@ class SegHead(nn.Module):
                               bbox[1] / self.img_width * fw,
                               (bbox[2]+bbox[0]) / self.img_height * fh,
                               (bbox[3]+bbox[1]) / self.img_width * fw]])
+
+if __name__=='__main__':
+    net = SegHead((1920,1080))
+    for ml1 in net.modules():
+        if isinstance(ml1, nn.Sequential):
+            for ml2 in ml1:
+                if isinstance(ml2, nn.ConvTranspose2d):
+                    nn.init.kaiming_normal_(ml2.weight.data)
+                elif isinstance(ml2, nn.Conv2d):
+                    nn.init.kaiming_normal_(ml2.weight.data)
+        elif isinstance(ml1, nn.ConvTranspose2d):
+            nn.init.kaiming_normal_(ml1.weight.data)
+        elif isinstance(ml1, nn.Conv2d):
+            nn.init.kaiming_normal_(ml1.weight.data)
+        else:
+            print(type(ml1))
+    torch.save(net.state_dict(), 'seg.pth')
+
