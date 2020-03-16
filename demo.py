@@ -21,6 +21,7 @@ from network.backbone import ResNet
 from network.seghead import SegHead
 import dataloaders.MOTS_dataloaders as ms
 import dataloaders.Demo_dataloader as de
+from network.fpn import FPN101
 
 def get_img_size(sequence):
     if sequence==5 or sequence==6:
@@ -40,16 +41,16 @@ def main(sequence):
     if not os.path.exists(save_dir):
         os.makedirs(os.path.join(save_dir))
 
-    backbone = ResNet()
+    backbone = FPN101()
     seghead=SegHead(get_img_size(sequence))
-    BackBoneName = "ResNet"
+    BackBoneName = "FPN101"
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(5) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(100) + '.pth'),
                        map_location=lambda storage, loc: storage))
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(5) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(100) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     backbone=backbone.cuda()
@@ -76,18 +77,42 @@ def main(sequence):
             out = seghead(feature,bbox)
 
             background = np.zeros_like(inputs[0][0].cpu())
-            for pre,box,track_id in zip(out,bbox,track_list):
-                mask = np.zeros_like(inputs[0][0].cpu())
-                box = box.squeeze()
+            background = background.astype(np.uint8)
+            result_list=[]
+
+            for pre,nbox,track_id in zip(out,bbox,track_list):
+                box = nbox.squeeze()
                 box = [int(i) for i in box]
 
-                temp = mask[box[1]:box[1]+box[3],box[0]:box[0]+box[2]]
                 pre = pre.cpu().detach().numpy()
-                pre=normalization(pre)
+                pre = normalization(pre)
+                result_list.append((pre,box,track_id))
+            result_list.sort(key=lambda item:(item[0]>0.5).sum()/(item[1][3]*item[1][2]))
+
+
+            for item in result_list:
+                pre = item[0]
+                box = item[1]
+                track_id = item[2]
+
+                mask = np.zeros_like(inputs[0][0].cpu())
+                # box = box.squeeze()
+                # box = [int(i) for i in box]
+
+                temp = mask[box[1]:box[1]+box[3],box[0]:box[0]+box[2]]
+                # pre = pre.cpu().detach().numpy()
+                # pre=normalization(pre)
                 temp[pre>0.5] = 1
                 background[mask>0]=int(track_id)
 
+                # plt.imshow(background)
+                # plt.show()
+            # plt.imshow(background[500:600,500:600])
+            # plt.show()
+            # print(background[500:600,500:600])
+
             for id in track_id:
+                id = int(id)
                 mask = np.zeros_like(inputs[0][0].cpu())
                 mask[background==id]=1
                 mask = np.asfortranarray(mask)

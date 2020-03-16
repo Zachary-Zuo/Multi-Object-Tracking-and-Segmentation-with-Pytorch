@@ -49,7 +49,6 @@ class SegHead(nn.Module):
             crops = zoom_roi_align(crops, self.zoomboxes, self.box_index)
 
             x.append(crops.squeeze())
-            break
         return x
 
 
