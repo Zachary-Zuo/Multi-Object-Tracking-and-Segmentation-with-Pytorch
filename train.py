@@ -6,7 +6,8 @@ import os
 from datetime import datetime
 import socket
 import timeit
-from tensorboardX import SummaryWriter
+import torchvision
+from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import torch
 import torch.optim as optim
@@ -41,8 +42,8 @@ def main(sequence,cfg):
     beta = 0.001
     margin = 0.3
 
-    lr_B = 1e-5
-    lr_S = 1e-5
+    lr_B = 0.001
+    lr_S = 0.001
     wd = 0.0002
 
     save_root_dir = "models"
@@ -94,9 +95,13 @@ def main(sequence,cfg):
             out = seghead(feature,bbox)
             gts = [gt.squeeze().cuda(device) for gt in gts]
 
-            losses = []
-            for pre,gt in zip(out,gts):
-                losses.append(F.binary_cross_entropy_with_logits(pre,gt))
+            # losses = []
+            preall = torch.cat(out,dim=0)
+            gtall = torch.cat(gts,dim=0)
+            loss = F.binary_cross_entropy_with_logits(preall,gtall)
+
+            # for pre,gt in zip(out,gts):
+            #     losses.append()
 
             # for pre, gt in zip(out, gts):
             #     gt=gt.cpu().detach().numpy()
@@ -106,7 +111,7 @@ def main(sequence,cfg):
             #     plt.imshow(gt)
             #     plt.show()
 
-            loss = sum(losses)
+            # loss = sum(losses)
             backbone.zero_grad()
             seghead.zero_grad()
             loss.backward()
@@ -123,7 +128,7 @@ def main(sequence,cfg):
         stop_time = timeit.default_timer()
         print("Execution time: " + str(stop_time - start_time))
         print("save models")
-        if epoch%50==0:
+        if epoch%1==0:
             torch.save(backbone.state_dict(), os.path.join(save_dir, BackBoneName + '_epoch-' + str(epoch) + '.pth'))
             torch.save(seghead.state_dict(), os.path.join(save_dir, SegHeadName + '_epoch-' + str(epoch) + '.pth'))
     writer.close()

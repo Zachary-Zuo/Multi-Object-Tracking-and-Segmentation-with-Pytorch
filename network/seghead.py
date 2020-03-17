@@ -104,8 +104,9 @@ class SegHead(nn.Module):
                 out = F.relu(getattr(self, layer_name)(out))
             out = self.conv5_mask(out)
             out = self.mask_fcn_logits(out)
-            zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
-            out = zoom_roi_align(out, self.zoomboxes, self.box_index)
+            if not self.training:
+                zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
+                out = zoom_roi_align(out, self.zoomboxes, self.box_index)
             x.append(out.squeeze())
         return x
 
