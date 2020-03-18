@@ -10,3 +10,5 @@ datasets/
 results/
 tracking_results/
 else/
+*.pth
+*.txt

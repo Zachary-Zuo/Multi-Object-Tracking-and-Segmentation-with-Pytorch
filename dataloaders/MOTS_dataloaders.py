@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from tools.mots_tools.io import *
 import torch
 from roi_align import RoIAlign
+import matplotlib.pyplot as plt
 
 def format_box(bbox):
     return torch.Tensor([[bbox[0], bbox[1], bbox[0]+ bbox[2], bbox[1] + bbox[3]]])
@@ -26,6 +27,8 @@ class MOTSDataset(Dataset):
         self.inputRes = inputRes
         self.random_rev_thred = random_rev_thred
 
+        self.roi_align = RoIAlign(56, 28, 0.25)
+
 
 
     def __len__(self):
@@ -38,6 +41,7 @@ class MOTSDataset(Dataset):
         mask_list = []
         img = os.path.join(self.imgPath, "{:06}.jpg".format(frame))
         img = cv2.imread(img)
+        img = cv2.resize(img, (2048, 1024))
         img = img[:,:,:].transpose(2, 0, 1)
         img = np.ascontiguousarray(img, dtype=np.float32)
         img /= 255.0
@@ -45,6 +49,10 @@ class MOTSDataset(Dataset):
             if obj.class_id!=2:
                 continue
             mask = rletools.decode(obj.mask)
+            mask = cv2.resize(mask, (2048, 1024))
+            newmask = np.asfortranarray(mask)
+            newmask = newmask.astype(np.uint8)
+            obj.mask = rletools.encode(newmask)
             mask = torch.from_numpy(mask)
             mask = mask.float()
             mask = mask[None]
@@ -55,11 +63,12 @@ class MOTSDataset(Dataset):
             bbox = pass_box(rletools.toBbox(obj.mask))
             box_index = torch.tensor([0], dtype=torch.int)
 
-            crop_height = int(bbox[3])
-            crop_width = int(bbox[2])
-            roi_align = RoIAlign(crop_height, crop_width, 0.25)
+            # crop_height = int(bbox[3])
+            # crop_width = int(bbox[2])
+            # roi_align = RoIAlign(crop_height, crop_width, 0.25)
 
-            crops = roi_align(mask, boxes, box_index)
+
+            crops = self.roi_align(mask, boxes, box_index)
             crops=crops.squeeze()
 
             mask_list.append(crops)

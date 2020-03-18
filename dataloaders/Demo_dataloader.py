@@ -47,14 +47,14 @@ def load_MOT_txt(path,width,height):
 
 class MOTTrackDataset(Dataset):
     def __init__(self, inputRes=None,
-                 # seqs_list_file=r'E:\Challenge\Multi-Object-Tracking-and-Segmentation-with-Pytorch\results',
-                 seqs_list_file='/home/zuochenyu/codes/Multi-Object-Tracking-and-Segmentation-with-Pytorch/results',
+                 seqs_list_file=r'E:\Challenge\Multi-Object-Tracking-and-Segmentation-with-Pytorch\results',
+                 # seqs_list_file='/home/zuochenyu/codes/Multi-Object-Tracking-and-Segmentation-with-Pytorch/results',
                  transform=None,
                  sequence=2,
                  random_rev_thred=0.4):
 
-        # self.imgPath = r'E:\Challenge\MOTSChallenge\train\images'
-        self.imgPath = '/home/zuochenyu/datasets/MOTSChallenge/train/images'
+        self.imgPath = r'E:\Challenge\MOTSChallenge\train\images'
+        # self.imgPath = '/home/zuochenyu/datasets/MOTSChallenge/train/images'
         self.imgPath = os.path.join(self.imgPath,"{:04}".format(sequence))
         self.width = 1920
         self.height = 1080
@@ -62,8 +62,8 @@ class MOTTrackDataset(Dataset):
             self.width=640
             self.height=480
         filename = os.path.join(seqs_list_file, "{:04}.txt".format(sequence))
-        self.instance = load_MOT_txt(filename,self.width,self.height)
-        self.transform = transform
+        # self.instance = load_MOT_txt(filename,self.width,self.height)
+        self.instance = load_MOT_txt(filename, 2048, 1024)
         self.inputRes = inputRes
         self.random_rev_thred = random_rev_thred
 
@@ -73,33 +73,17 @@ class MOTTrackDataset(Dataset):
     def __getitem__(self, idx):
         frame = idx + 1
         bbox_list = []
-        mask_list = []
         track_list = []
         img = os.path.join(self.imgPath, "{:06}.jpg".format(frame))
         img = cv2.imread(img)
+        img = cv2.resize(img, (2048, 1024))
         img = img[:, :, :].transpose(2, 0, 1)
         img = np.ascontiguousarray(img, dtype=np.float32)
         img /= 255.0
-        mask=torch.from_numpy(img)
-        mask = mask[None]
         if frame in self.instance.keys():
             for obj in self.instance[frame]:
                 bbox = pass_box(obj["bbox"])
                 bbox_list.append(bbox)
-
-                # mask
-                boxes = format_box(obj["bbox"])
-                box_index = torch.tensor([0], dtype=torch.int)
-                crop_height = int(bbox[3])
-                crop_width = int(bbox[2])
-                roi_align = RoIAlign(crop_height, crop_width, 0.25)
-
-                crops = roi_align(mask, boxes, box_index)
-                crops = crops.squeeze()
-
-                mask_list.append(crops)
                 track_list.append(obj["track_id"])
 
-        if self.transform is not None:
-            img = self.transform(img)
         return  {"img":img,"bbox":bbox_list,"track":track_list}
