@@ -292,15 +292,29 @@ class GeneralizedRCNN(nn.Module):
         return self.backbone(x)
 
 def initialize_net(net):
-    pretrained_dict = torch.load('model_final.pth')
+    # pretrained_dict = torch.load('model_final.pth')
+    # model_dict = net.state_dict()
+    # pretrained_dict = {k: v for k, v in pretrained_dict.items() if 'backbone' in model_dict}
+    # model_dict.update(pretrained_dict)
+    # net.load_state_dict(model_dict)
+    pretrained_dict = torch.load('e2e_mask_rcnn_R_50_FPN_1x.pth')
     model_dict = net.state_dict()
-    pretrained_dict = {k: v for k, v in pretrained_dict.items() if 'backbone' in model_dict}
-    model_dict.update(pretrained_dict)
+    pretrained_dict = pretrained_dict['model']
+    pret = {}
+    for mk in model_dict.keys():
+        for k, v in pretrained_dict.items():
+            if mk in k:
+                pret[mk] = v
+                continue
+    print(pret.keys())
+    model_dict.update(pret)
     net.load_state_dict(model_dict)
 
 if __name__=='__main__':
-    x = torch.randn(1,3,1080,1920).cuda()
+    x = torch.randn(1,3,1024,2048).cuda()
     net = GeneralizedRCNN().cuda()
+    # initialize_net(net)
+    # torch.save(net.state_dict(), 'GeneralizedRCNN.pth')
     out = net(x)
     for o  in out:
         print(o.shape)

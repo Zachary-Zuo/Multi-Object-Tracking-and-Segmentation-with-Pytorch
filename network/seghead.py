@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.utils.data
 from network.backbone import ResNet
 from roi_align import RoIAlign
+import math
 from roi_align import CropAndResize
 
 def make_conv3x3(
@@ -50,7 +51,7 @@ class SegHead(nn.Module):
         self.box_index = torch.tensor([0], dtype=torch.int).cuda()
 
         self.blocks = []
-        for id in range(4):
+        for id in range(1,5):
             layer_name = "mask_fcn{}".format(id)
             module = make_conv3x3(256, 256,dilation=1, stride=1)
             self.add_module(layer_name, module)
@@ -78,18 +79,13 @@ class SegHead(nn.Module):
         #         nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
 
     def pooler(self,fms,bbox):
-        sampling_ratio = 0.03125
-        for i, fm in enumerate(reversed(fms)):
-            fw, fh = fm.shape[-2:]
-            if bbox[0]/self.img_height*fh > 6 and bbox[1]/self.img_width*fw>3:
-                roi_align = RoIAlign(self.crop_height, self.crop_width, sampling_ratio)
-                boxes = self.format_box(bbox, fw, fh).cuda()
-                crops = roi_align(fm, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
-                return crops
-            sampling_ratio *= 2
-        fm = fms[0]
+        roi_level = min(3,max(0,5+math.log2(math.sqrt(bbox[2]*bbox[3])/math.sqrt(self.img_width*self.img_height))))
+        roi_level = int(roi_level)
+
+        fm = fms[roi_level]
         fw, fh = fm.shape[-2:]
-        roi_align = RoIAlign(self.crop_height, self.crop_width, sampling_ratio/2)
+        sampling_ratio = 0.03125/(2**roi_level)
+        roi_align = RoIAlign(self.crop_height, self.crop_width, sampling_ratio)
         boxes = self.format_box(bbox, fw, fh).cuda()
         crops = roi_align(fm, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
         return crops
@@ -118,8 +114,29 @@ class SegHead(nn.Module):
                               (bbox[2]+bbox[0]) / self.img_height * fh,
                               (bbox[3]+bbox[1]) / self.img_width * fw]])
 
+def initialize_net(net):
+    pretrained_dict = torch.load('e2e_mask_rcnn_R_50_FPN_1x.pth')
+    model_dict = net.state_dict()
+    pretrained_dict = pretrained_dict['model']
+    pret = {}
+    for mk in model_dict.keys():
+        for k,v in pretrained_dict.items():
+            if mk in k:
+                if 'logits' not in mk:
+                    pret[mk]=v
+                else:
+                    pret[mk]=v[2].unsqueeze(0)
+                continue
+    print(pret.keys())
+    model_dict.update(pret)
+    net.load_state_dict(model_dict)
+
 if __name__=='__main__':
-    net = SegHead((1920,1080))
+    net = SegHead((2048,1024))
+    initialize_net(net)
+
+
+
     # for ml1 in net.modules():
     #     if isinstance(ml1, nn.Sequential):
     #         for ml2 in ml1:
@@ -133,4 +150,5 @@ if __name__=='__main__':
     #         nn.init.kaiming_normal_(ml1.weight.data)
     #     else:
     #         print(type(ml1))
+
     torch.save(net.state_dict(), 'seg.pth')
