@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from tools.mots_tools.io import *
 import torch
 from roi_align import RoIAlign
+import torchvision
 import matplotlib.pyplot as plt
 
 def format_box(bbox):
@@ -13,21 +14,21 @@ def pass_box(bbox):
 
 class MOTSDataset(Dataset):
     def __init__(self, inputRes=None,
-                 seqs_list_file='/home/zuochenyu/datasets/MOTSChallenge/train/instances_txt',
-                 # seqs_list_file=r'E:\Challenge\MOTSChallenge\train\instances_txt',
+                 # seqs_list_file='/home/zuochenyu/datasets/MOTSChallenge/train/instances_txt',
+                 seqs_list_file=r'E:\Challenge\MOTSChallenge\train\instances_txt',
                  transform=None,
                  sequence=2,
                  random_rev_thred=0.4):
 
-        # self.imgPath = os.path.join(r'E:\Challenge\MOTSChallenge\train\images',"{:04}".format(sequence))
-        self.imgPath = os.path.join('/home/zuochenyu/datasets/MOTSChallenge/train/images', "{:04}".format(sequence))
+        self.imgPath = os.path.join(r'E:\Challenge\MOTSChallenge\train\images',"{:04}".format(sequence))
+        # self.imgPath = os.path.join('/home/zuochenyu/datasets/MOTSChallenge/train/images', "{:04}".format(sequence))
         filename = os.path.join(seqs_list_file, "{:04}.txt".format(sequence))
         self.instance = load_txt(filename)
         self.transform = transform
         self.inputRes = inputRes
         self.random_rev_thred = random_rev_thred
 
-        self.roi_align = RoIAlign(56, 28, 0.25)
+        self.roi_align = RoIAlign(56, 56, 0.25)
 
 
 
@@ -52,15 +53,14 @@ class MOTSDataset(Dataset):
             mask = cv2.resize(mask, (2048, 1024))
             newmask = np.asfortranarray(mask)
             newmask = newmask.astype(np.uint8)
-            obj.mask = rletools.encode(newmask)
+            newmask = rletools.encode(newmask)
             mask = torch.from_numpy(mask)
             mask = mask.float()
             mask = mask[None]
             mask = mask[None]
             mask = mask.contiguous()
-
-            boxes = format_box(rletools.toBbox(obj.mask))
-            bbox = pass_box(rletools.toBbox(obj.mask))
+            boxes = format_box(rletools.toBbox(newmask))
+            bbox = pass_box(rletools.toBbox(newmask))
             box_index = torch.tensor([0], dtype=torch.int)
 
             # crop_height = int(bbox[3])
@@ -69,8 +69,9 @@ class MOTSDataset(Dataset):
 
 
             crops = self.roi_align(mask, boxes, box_index)
+            # print(boxes)
+            # crops = torchvision.ops.roi_align(mask, boxes, (56, 56))[0]
             crops=crops.squeeze()
-
             mask_list.append(crops)
             bbox_list.append(bbox)
 

@@ -22,6 +22,7 @@ from network.backbone import ResNet
 from network.seghead import SegHead
 from network.fpn import FPN101
 import dataloaders.MOTS_dataloaders as ms
+from network.GeneralizedRCNN import GeneralizedRCNN
 
 def get_img_size(sequence):
     if sequence==5:
@@ -42,7 +43,7 @@ def main(sequence,cfg):
     beta = 0.001
     margin = 0.3
 
-    lr_B = 0.001
+    lr_B = 0.0001
     lr_S = 0.001
     wd = 0.0002
 
@@ -52,9 +53,9 @@ def main(sequence,cfg):
     if not os.path.exists(save_dir):
         os.makedirs(os.path.join(save_dir))
 
-    backbone = FPN101()
-    seghead=SegHead(get_img_size(sequence))
-    BackBoneName = "FPN101"
+    backbone = GeneralizedRCNN()
+    seghead=SegHead([2048,1024])
+    BackBoneName = "GeneralizedRCNN"
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
@@ -88,12 +89,15 @@ def main(sequence,cfg):
 
             inputs, bbox,gts = sample_batched["img"], sample_batched["bbox"],sample_batched["mask"]
 
+            gts = [gt.squeeze().cuda(device) for gt in gts]
+
+
             inputs.requires_grad_()
             inputs = inputs.cuda(device)
             feature = backbone.forward(inputs)
 
             out = seghead(feature,bbox)
-            gts = [gt.squeeze().cuda(device) for gt in gts]
+            # gts = [gt.squeeze().cuda(device) for gt in gts]
 
             # losses = []
             preall = torch.cat(out,dim=0)

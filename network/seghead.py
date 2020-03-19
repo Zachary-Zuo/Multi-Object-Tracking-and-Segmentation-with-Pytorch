@@ -6,6 +6,7 @@ import torch.utils.data
 from network.backbone import ResNet
 from roi_align import RoIAlign
 import math
+import torchvision
 from roi_align import CropAndResize
 
 def make_conv3x3(
@@ -46,7 +47,8 @@ class SegHead(nn.Module):
         self.feature_width = math.ceil(self.img_width / 16)
 
         self.crop_height = 28
-        self.crop_width = 14
+        # self.crop_width = 14
+        self.crop_width = 28
 
         self.box_index = torch.tensor([0], dtype=torch.int).cuda()
 
@@ -57,7 +59,8 @@ class SegHead(nn.Module):
             self.add_module(layer_name, module)
             self.blocks.append(layer_name)
 
-        self.zoomboxes = torch.Tensor([[0, 0, 28, 56]]).cuda()
+        # self.zoomboxes = torch.Tensor([[0, 0, 28, 56]]).cuda()
+        self.zoomboxes = torch.Tensor([[0, 0, 56, 56]]).cuda()
 
         self.conv5_mask = torch.nn.ConvTranspose2d(256, 256, 2, 2, 0)
         self.mask_fcn_logits = torch.nn.Conv2d(256, 1, 1, 1, 0)
@@ -83,11 +86,14 @@ class SegHead(nn.Module):
         roi_level = int(roi_level)
 
         fm = fms[roi_level]
-        fw, fh = fm.shape[-2:]
+        fh, fw = fm.shape[-2:]
         sampling_ratio = 0.03125/(2**roi_level)
         roi_align = RoIAlign(self.crop_height, self.crop_width, sampling_ratio)
         boxes = self.format_box(bbox, fw, fh).cuda()
+        # print(fm.shape,boxes,bbox)
         crops = roi_align(fm, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
+        # crops = torchvision.ops.roi_align(fm,boxes,(28,28))[0].unsqueeze(0)
+
         return crops
 
 
@@ -96,6 +102,7 @@ class SegHead(nn.Module):
         for bbox in bbox_list:
             bbox = bbox.squeeze()
             out = self.pooler(fms,bbox)
+            # print(out.shape)
             for layer_name in self.blocks:
                 out = F.relu(getattr(self, layer_name)(out))
             out = self.conv5_mask(out)
@@ -103,6 +110,7 @@ class SegHead(nn.Module):
             if not self.training:
                 zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
                 out = zoom_roi_align(out, self.zoomboxes, self.box_index)
+                # out = torchvision.ops.roi_align(out,self.zoomboxes,(bbox[3], bbox[2]))[0]
             x.append(out.squeeze())
         return x
 
@@ -115,7 +123,7 @@ class SegHead(nn.Module):
                               (bbox[3]+bbox[1]) / self.img_width * fw]])
 
 def initialize_net(net):
-    pretrained_dict = torch.load('e2e_mask_rcnn_R_50_FPN_1x.pth')
+    pretrained_dict = torch.load('model_final.pth')
     model_dict = net.state_dict()
     pretrained_dict = pretrained_dict['model']
     pret = {}
@@ -125,7 +133,7 @@ def initialize_net(net):
                 if 'logits' not in mk:
                     pret[mk]=v
                 else:
-                    pret[mk]=v[2].unsqueeze(0)
+                    pret[mk]=v[1].unsqueeze(0)
                 continue
     print(pret.keys())
     model_dict.update(pret)
@@ -151,4 +159,4 @@ if __name__=='__main__':
     #     else:
     #         print(type(ml1))
 
-    torch.save(net.state_dict(), 'seg.pth')
+    torch.save(net.state_dict(), 'SegHead.pth')

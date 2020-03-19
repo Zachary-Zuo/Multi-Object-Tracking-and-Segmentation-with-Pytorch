@@ -128,42 +128,51 @@ if __name__ == '__main__':
     #     print(fm.size())
     #     w,h = fm.shape[-2:]
     #     print(w,h)
-    for ml1 in net.modules():
-        if isinstance(ml1,nn.Conv2d):
-            nn.init.kaiming_normal_(ml1.weight.data)
-        elif isinstance(ml1,nn.BatchNorm2d):
-            # nn.init.kaiming_normal_(ml1.weight.data)
-            print("BatchNorm2d")
-        elif isinstance(ml1, nn.Sequential):
-            for ml2 in ml1:
-                if isinstance(ml2, Bottleneck):
-                    for ml3 in ml2.modules():
-                        if isinstance(ml3, nn.Conv2d):
-                            nn.init.kaiming_normal_(ml3.weight.data)
-                        elif isinstance(ml3, nn.BatchNorm2d):
-                            # nn.init.kaiming_normal_(ml3.weight.data)
-                            print("BatchNorm2d")
-                        elif isinstance(ml3, nn.Sequential):
-                            for ml4 in ml3:
-                                if isinstance(ml4, nn.Conv2d):
-                                    nn.init.kaiming_normal_(ml4.weight.data)
-                                elif isinstance(ml4, nn.BatchNorm2d):
-                                    # nn.init.kaiming_normal_(ml4.weight.data)
-                                    print("BatchNorm2d")
-        elif isinstance(ml1, Bottleneck):
-            for ml2 in ml1.modules():
-                if isinstance(ml2, nn.Conv2d):
-                    nn.init.kaiming_normal_(ml2.weight.data)
-                elif isinstance(ml2, nn.BatchNorm2d):
-                    # nn.init.kaiming_normal_(ml2.weight.data)
-                    print("BatchNorm2d")
-                elif isinstance(ml2, nn.Sequential):
-                    for ml3 in ml2:
-                        if isinstance(ml3, nn.Conv2d):
-                            nn.init.kaiming_normal_(ml3.weight.data)
-                        elif isinstance(ml3, nn.BatchNorm2d):
-                            # nn.init.kaiming_normal_(ml3.weight.data)
-                            print("BatchNorm2d")
-        else:
-            print(type(ml1))
-    torch.save(net.state_dict(), 'fpn.pth')
+
+    # for name, param in net.named_parameters():
+    #     # if "bias" in name:
+    #     #     nn.init.constant_(param, 0)
+    #     # elif "weight" in name:
+    #     #     nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
+    #     # else:
+    #     print(name)
+    print(net)
+    # for ml1 in net.modules():
+    #     if isinstance(ml1,nn.Conv2d):
+    #         nn.init.kaiming_normal_(ml1.weight.data)
+    #     elif isinstance(ml1,nn.BatchNorm2d):
+    #         # nn.init.kaiming_normal_(ml1.weight.data)
+    #         print("BatchNorm2d")
+    #     elif isinstance(ml1, nn.Sequential):
+    #         for ml2 in ml1:
+    #             if isinstance(ml2, Bottleneck):
+    #                 for ml3 in ml2.modules():
+    #                     if isinstance(ml3, nn.Conv2d):
+    #                         nn.init.kaiming_normal_(ml3.weight.data)
+    #                     elif isinstance(ml3, nn.BatchNorm2d):
+    #                         # nn.init.kaiming_normal_(ml3.weight.data)
+    #                         print("BatchNorm2d")
+    #                     elif isinstance(ml3, nn.Sequential):
+    #                         for ml4 in ml3:
+    #                             if isinstance(ml4, nn.Conv2d):
+    #                                 nn.init.kaiming_normal_(ml4.weight.data)
+    #                             elif isinstance(ml4, nn.BatchNorm2d):
+    #                                 # nn.init.kaiming_normal_(ml4.weight.data)
+    #                                 print("BatchNorm2d")
+    #     elif isinstance(ml1, Bottleneck):
+    #         for ml2 in ml1.modules():
+    #             if isinstance(ml2, nn.Conv2d):
+    #                 nn.init.kaiming_normal_(ml2.weight.data)
+    #             elif isinstance(ml2, nn.BatchNorm2d):
+    #                 # nn.init.kaiming_normal_(ml2.weight.data)
+    #                 print("BatchNorm2d")
+    #             elif isinstance(ml2, nn.Sequential):
+    #                 for ml3 in ml2:
+    #                     if isinstance(ml3, nn.Conv2d):
+    #                         nn.init.kaiming_normal_(ml3.weight.data)
+    #                     elif isinstance(ml3, nn.BatchNorm2d):
+    #                         # nn.init.kaiming_normal_(ml3.weight.data)
+    #                         print("BatchNorm2d")
+    #     else:
+    #         print(type(ml1))
+    # torch.save(net.state_dict(), 'fpn.pth')
