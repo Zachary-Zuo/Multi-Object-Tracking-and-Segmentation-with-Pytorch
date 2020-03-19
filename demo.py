@@ -49,21 +49,12 @@ def main(sequence):
     BackBoneName = "GeneralizedRCNN"
     SegHeadName = "seghead"
 
-    # backbone.load_state_dict(
-    #         torch.load(BackBoneName + '.pth',
-    #                    map_location=lambda storage, loc: storage))
-    #
-    # seghead.load_state_dict(
-    #     torch.load(SegHeadName +'.pth',
-    #                map_location=lambda storage, loc: storage))
-
-
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(20) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(61) + '.pth'),
                        map_location=lambda storage, loc: storage))
 
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(20) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(61) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     backbone=backbone.cuda()
@@ -91,9 +82,9 @@ def main(sequence):
             background = np.zeros_like(inputs[0][0].cpu())
             background = background.astype(np.uint8)
             result_list=[]
-            for i in range(250):
-                plt.imshow(feature[2][0][250-i].cpu())
-                plt.show()
+            # for i in range(250):
+            #     plt.imshow(feature[2][0][250-i].cpu())
+            #     plt.show()
 
             for pre,nbox,track_id in zip(out,bbox,track_list):
                 box = nbox.squeeze()
@@ -104,8 +95,7 @@ def main(sequence):
                 result_list.append((pre,box,track_id))
                 # plt.imshow(pre)
                 # plt.show()
-            result_list.sort(key=lambda item:(item[0]>0.85).sum()/(item[1][3]*item[1][2]))
-
+            result_list.sort(key=lambda item:(item[0]>0.75).sum()/(item[1][3]*item[1][2]))
 
             for item in result_list:
                 pre = item[0]
@@ -119,7 +109,7 @@ def main(sequence):
                 temp = mask[box[1]:box[1]+box[3],box[0]:box[0]+box[2]]
                 # pre = pre.cpu().detach().numpy()
                 # pre=normalization(pre)
-                temp[pre>0.85] = 1
+                temp[pre>0.75] = 1
                 background[mask>0]=int(track_id)
             # plt.imshow(background)
             # plt.show()
@@ -133,23 +123,27 @@ def main(sequence):
                 background = cv2.resize(background, (640, 480))
             else:
                 background = cv2.resize(background, (1920, 1080))
-            for id in track_id:
+
+            for id in track_list:
                 id = int(id)
                 mask = np.zeros_like(background)
                 mask[background==id]=1
                 mask = np.asfortranarray(mask)
                 mask = mask.astype(np.uint8)
                 rle = rletools.encode(mask)
-                output =' '.join([str(ii+1),str(int(2000+track_id)),"2",str(rle['size'][0]),str(rle['size'][1]),rle['counts'].decode(encoding='UTF-8')])
+                # print(id,rletools.area(rle))
+                if rletools.area(rle)<1000:
+                    continue
+                output =' '.join([str(ii+1),str(int(2000+id)),"2",str(rle['size'][0]),str(rle['size'][1]),rle['counts'].decode(encoding='UTF-8')])
                 file.write(output+'\n')
     file.close()
 
 if __name__ == "__main__":
     main(2)
     print("finish:2")
-    main(5)
-    print("finish:5")
-    main(9)
-    print("finish:9")
-    main(11)
-    print("finish:11")
+    # main(5)
+    # print("finish:5")
+    # main(9)
+    # print("finish:9")
+    # main(11)
+    # print("finish:11")

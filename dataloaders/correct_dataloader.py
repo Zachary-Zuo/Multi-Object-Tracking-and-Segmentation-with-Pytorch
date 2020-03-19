@@ -36,6 +36,7 @@ class MOTSCorrectDataset(Dataset):
         track_list = []
         img = os.path.join(self.imgPath, "{:06}.jpg".format(frame))
         img = cv2.imread(img)
+        img = cv2.resize(img, (2048, 1024))
         img = img[:,:,:].transpose(2, 0, 1)
         img = np.ascontiguousarray(img, dtype=np.float32)
         img /= 255.0
@@ -43,9 +44,13 @@ class MOTSCorrectDataset(Dataset):
             if obj.class_id!=2:
                 continue
             track_list.append(obj.track_id%100)
-
+            mask = rletools.decode(obj.mask)
+            mask = cv2.resize(mask, (2048, 1024))
+            newmask = np.asfortranarray(mask)
+            newmask = newmask.astype(np.uint8)
+            newmask = rletools.encode(newmask)
             # boxes = format_box(rletools.toBbox(obj.mask))
-            bbox = pass_box(rletools.toBbox(obj.mask))
+            bbox = pass_box(rletools.toBbox(newmask))
 
             bbox_list.append(bbox)
 
