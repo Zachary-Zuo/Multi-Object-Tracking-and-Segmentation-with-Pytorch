@@ -20,6 +20,7 @@ from network.seghead import SegHead
 from network.fpn import FPN101
 from dataloaders.backbone_dataloader import BackboneDataset
 from network.GeneralizedRCNN import GeneralizedRCNN
+import cv2
 
 def get_img_size(sequence):
     if sequence==5:
@@ -56,10 +57,10 @@ def main(cfg):
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(14) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(24) + '.pth'),
                        map_location=lambda storage, loc: storage))
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(14) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(24) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     # Logging into Tensorboard
@@ -106,10 +107,28 @@ def main(cfg):
             feature = backbone.forward(inputs)
 
             out = seghead(feature)
+            # print(feature[0].shape)
+            # plt.imshow(feature[0].detach().cpu()[0][0])
+            # plt.show()
+            # plt.imshow(feature[1].detach().cpu()[0][0])
+            # plt.show()
+            # plt.imshow(feature[2].detach().cpu()[0][0])
+            # plt.show()
+            # plt.imshow(feature[3].detach().cpu()[0][0])
+            # plt.show()
             plt.imshow(out.detach().cpu()[0][0])
+            plt.show()
+            output = out.detach().cpu().numpy()[0][0]
+            output[output<0.5]=0
+            print(output.shape)
+            output = cv2.resize(output, (2048, 1024))
+            plt.imshow(output)
             plt.show()
             plt.imshow(gts.cpu()[0][0])
             plt.show()
+
+
+
             loss = F.binary_cross_entropy_with_logits(out,gts)
 
             # for pre,gt in zip(out,gts):

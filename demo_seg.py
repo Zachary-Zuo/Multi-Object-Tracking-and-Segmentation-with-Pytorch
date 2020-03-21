@@ -1,29 +1,15 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-import argparse
+import cv2
 import os
-from datetime import datetime
-import socket
-import timeit
-from tensorboardX import SummaryWriter
 import numpy as np
 import pycocotools.mask as rletools
 import torch
-import torch.optim as optim
-from torchvision import transforms
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import torch.nn as nn
-
-import torch.nn.functional as F
-from network.backbone import ResNet
 from network.seghead import SegHead
-import dataloaders.MOTS_dataloaders as ms
 import dataloaders.correct_dataloader as cor
-from network.fpn import FPN101
+import matplotlib.pyplot as plt
+
+
 from network.GeneralizedRCNN import GeneralizedRCNN
-import cv2
 
 def get_img_size(sequence):
     if sequence==5 or sequence==6:
@@ -50,11 +36,11 @@ def main(sequence):
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(61) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(32) + '.pth'),
                        map_location=lambda storage, loc: storage))
 
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(61) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(32) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     backbone=backbone.cuda()
@@ -69,6 +55,7 @@ def main(sequence):
     seghead.eval()
     file = open('{:04}.txt'.format(sequence), "w")
 
+    size = get_img_size(sequence)
     with torch.no_grad():
 
 
@@ -78,74 +65,90 @@ def main(sequence):
             inputs = inputs.cuda()
             feature = backbone(inputs)
 
-            out = seghead(feature, bbox)
-            background = np.zeros_like(inputs[0][0].cpu())
-            background = background.astype(np.uint8)
-            result_list = []
-            # for i in range(250):
-            #     plt.imshow(feature[2][0][250-i].cpu())
-            #     plt.show()
-            id_set = set()
-            for pre, nbox, track_id in zip(out, bbox, track_list):
-                box = nbox.squeeze()
-                box = [int(i) for i in box]
-
-                pre = pre.cpu().detach().numpy()
-                pre = normalization(pre)
-                result_list.append((pre, box, track_id))
-                id_set.add(int(track_id))
-                # plt.imshow(pre)
+            output_list = []
+            for l in range(1):
+                out = seghead(feature,level=3-l)
+                output = out.detach().cpu().numpy()[0][0]
+                # plt.imshow(output)
                 # plt.show()
-            result_list.sort(key=lambda item: (item[0] > 0.7).sum() / (item[1][3] * item[1][2]))
+                if sequence == 5 or sequence == 6:
+                    output = cv2.resize(output, (640, 480))
+                else:
+                    output = cv2.resize(output, (1920, 1080))
+                output_list.append(output)
+            output = sum(output_list)
+            # output = normalization(output)
+            output[output < 0.5] = 0
+            # plt.imshow(output)
+            # plt.show()
+
+            result_list=[]
+            id_set = set()
+            for nbox,track_id in zip(bbox,track_list):
+                box = nbox.squeeze()
+                box = [box[0]/2048*size[0],box[1]/1024*size[1],box[2]/2048*size[0],box[3]/1024*size[1]]
+                box = [int(i) for i in box]
+                track_id = int(track_id)
+                if track_id not in id_set:
+                    result_list.append((box,track_id))
+                    id_set.add(track_id)
+            result_list.sort(key=lambda item:item[0][3]*item[0][2])
+            result_list.reverse()
+
 
             for item in result_list:
-                pre = item[0]
-                box = item[1]
-                track_id = item[2]
+                box = item[0]
+                track_id = item[1]
 
-                mask = np.zeros_like(inputs[0][0].cpu())
-                # box = box.squeeze()
-                # box = [int(i) for i in box]
-
-                temp = mask[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
-                # pre = pre.cpu().detach().numpy()
+                mask = np.zeros_like(output)
+                temp = mask[box[1]:box[1]+box[3],box[0]:box[0]+box[2]]
                 # pre=normalization(pre)
-                # print(pre.shape)
-                # print(temp.shape)
-                # print(box)
-                temp[pre > 0.7] = 1
-                background[mask > 0] = int(track_id)
-            # plt.imshow(background)
-            # plt.show()
+                temp[temp>-1] = 1
 
-            # plt.imshow(background)
-            # plt.show()
-            # plt.imshow(background[500:600,500:600])
-            # plt.show()
-            # print(background[500:600,500:600])
-            if sequence == 5 or sequence == 6:
-                background = cv2.resize(background, (640, 480))
-            else:
-                background = cv2.resize(background, (1920, 1080))
-
-            for id in id_set:
-                mask = np.zeros_like(background)
-                mask[background == id] = 1
-                mask = np.asfortranarray(mask)
+                real = output.copy()
+                real[mask<1]=0
+                output[mask>0]=0
+                real[real>0]=1
+                # plt.imshow(real)
+                # plt.show()
+                mask = np.asfortranarray(real)
                 mask = mask.astype(np.uint8)
                 rle = rletools.encode(mask)
-                # print(id,rletools.area(rle))
-                if rletools.area(rle) < 1000:
-                    continue
                 # print(rletools.area(rle))
-                output = ' '.join([str(ii + 1), str(int(2000 + id)), "2", str(rle['size'][0]), str(rle['size'][1]),
+                if rletools.area(rle) < 10:
+                    continue
+                line = ' '.join([str(ii + 1), str(int(2000 + track_id)), "2", str(rle['size'][0]), str(rle['size'][1]),
                                    rle['counts'].decode(encoding='UTF-8')])
-                file.write(output + '\n')
-            # print('='*20)
+                file.write(line + '\n')
+            #
+            #
+            # if sequence==5 or sequence==6:
+            #     background = cv2.resize(background, (640, 480))
+            # else:
+            #     background = cv2.resize(background, (1920, 1080))
+            #
+            #
+            #
+            # for id in track_list:
+            #     id = int(id)
+            #     mask = np.zeros_like(background)
+            #     mask[background==id]=1
+            #     mask = np.asfortranarray(mask)
+            #     mask = mask.astype(np.uint8)
+            #     rle = rletools.encode(mask)
+            #     # print(id,rletools.area(rle))
+            #     if rletools.area(rle)<2000:
+            #         continue
+            #     output =' '.join([str(ii+1),str(int(2000+id)),"2",str(rle['size'][0]),str(rle['size'][1]),rle['counts'].decode(encoding='UTF-8')])
+            #     file.write(output+'\n')
     file.close()
 
 if __name__ == "__main__":
     # main(2)
+    # print("finish:2")
     main(5)
+    print("finish:5")
     # main(9)
+    # print("finish:9")
     # main(11)
+    # print("finish:11")
