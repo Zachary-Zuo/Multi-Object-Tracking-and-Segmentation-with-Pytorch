@@ -30,8 +30,6 @@ class MOTSDataset(Dataset):
 
         self.roi_align = RoIAlign(56, 56, 0.25)
 
-
-
     def __len__(self):
         return len(self.instance)
 

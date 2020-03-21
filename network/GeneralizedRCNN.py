@@ -311,7 +311,7 @@ def initialize_net(net):
     net.load_state_dict(model_dict)
 
 if __name__=='__main__':
-    # x = torch.randn(1,3,1024,2048).cuda()
+    # x = torch.randn(3,3,1024,2048).cuda()
     net = GeneralizedRCNN()
     initialize_net(net)
     torch.save(net.state_dict(), 'GeneralizedRCNN.pth')

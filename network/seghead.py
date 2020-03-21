@@ -75,44 +75,49 @@ class SegHead(nn.Module):
         )
         nn.init.constant_(self.mask_fcn_logits.bias, 0)
 
-        # for name, param in self.named_parameters():
-        #     if "bias" in name:
-        #         nn.init.constant_(param, 0)
-        #     elif "weight" in name:
-        #         nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
+    def pooler(self,fms,bbox=None,level=3):
+        if bbox==None:
+            return fms[level]
+        else:
+            roi_level = min(3,max(0,5+math.log2(math.sqrt(bbox[2]*bbox[3])/math.sqrt(self.img_width*self.img_height))))
+            roi_level = int(roi_level)
 
-    def pooler(self,fms,bbox):
-        roi_level = min(3,max(0,5+math.log2(math.sqrt(bbox[2]*bbox[3])/math.sqrt(self.img_width*self.img_height))))
-        roi_level = int(roi_level)
+            fm = fms[roi_level]
+            fh, fw = fm.shape[-2:]
+            sampling_ratio = 0.03125/(2**roi_level)
+            roi_align = RoIAlign(self.crop_height, self.crop_width, sampling_ratio)
+            boxes = self.format_box(bbox, fw, fh).cuda()
+            # print(fm.shape,boxes,bbox)
+            crops = roi_align(fm, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
+            # crops = torchvision.ops.roi_align(fm,boxes,(28,28))[0].unsqueeze(0)
 
-        fm = fms[roi_level]
-        fh, fw = fm.shape[-2:]
-        sampling_ratio = 0.03125/(2**roi_level)
-        roi_align = RoIAlign(self.crop_height, self.crop_width, sampling_ratio)
-        boxes = self.format_box(bbox, fw, fh).cuda()
-        # print(fm.shape,boxes,bbox)
-        crops = roi_align(fm, boxes, self.box_index)  # 输入必须是tensor，不能是numpy
-        # crops = torchvision.ops.roi_align(fm,boxes,(28,28))[0].unsqueeze(0)
-
-        return crops
+            return crops
 
 
-    def forward(self,fms,bbox_list):
-        x=[]
-        for bbox in bbox_list:
-            bbox = bbox.squeeze()
-            out = self.pooler(fms,bbox)
-            # print(out.shape)
+    def forward(self,fms,bbox_list=None,level=3):
+        if bbox_list ==None:
+            out = self.pooler(fms,level=level)
             for layer_name in self.blocks:
                 out = F.relu(getattr(self, layer_name)(out))
             out = self.conv5_mask(out)
             out = self.mask_fcn_logits(out)
-            if not self.training:
-                zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
-                out = zoom_roi_align(out, self.zoomboxes, self.box_index)
-                # out = torchvision.ops.roi_align(out,self.zoomboxes,(bbox[3], bbox[2]))[0]
-            x.append(out.squeeze())
-        return x
+            return out
+
+        else:
+            x=[]
+            for bbox in bbox_list:
+                bbox = bbox.squeeze()
+                out = self.pooler(fms,bbox)
+                for layer_name in self.blocks:
+                    out = F.relu(getattr(self, layer_name)(out))
+                out = self.conv5_mask(out)
+                out = self.mask_fcn_logits(out)
+                if not self.training:
+                    zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
+                    out = zoom_roi_align(out, self.zoomboxes, self.box_index)
+                    # out = torchvision.ops.roi_align(out,self.zoomboxes,(bbox[3], bbox[2]))[0]
+                x.append(out.squeeze())
+            return x
 
 
 
@@ -140,23 +145,8 @@ def initialize_net(net):
     net.load_state_dict(model_dict)
 
 if __name__=='__main__':
+    # x = torch.randn(3, 256, 30, 62).cuda()
     net = SegHead((2048,1024))
     initialize_net(net)
-
-
-
-    # for ml1 in net.modules():
-    #     if isinstance(ml1, nn.Sequential):
-    #         for ml2 in ml1:
-    #             if isinstance(ml2, nn.ConvTranspose2d):
-    #                 nn.init.kaiming_normal_(ml2.weight.data,mode="fan_out", nonlinearity="relu")
-    #             elif isinstance(ml2, nn.Conv2d):
-    #                 nn.init.kaiming_normal_(ml2.weight.data)
-    #     elif isinstance(ml1, nn.ConvTranspose2d):
-    #         nn.init.kaiming_normal_(ml1.weight.data)
-    #     elif isinstance(ml1, nn.Conv2d):
-    #         nn.init.kaiming_normal_(ml1.weight.data)
-    #     else:
-    #         print(type(ml1))
 
     torch.save(net.state_dict(), 'SegHead.pth')
