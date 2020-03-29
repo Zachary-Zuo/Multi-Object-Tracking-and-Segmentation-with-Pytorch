@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import cv2
 import torchvision
 from roi_align import RoIAlign
+from network.seghead import SegHead
+from network.GeneralizedRCNN import GeneralizedRCNN
 
 
 def track(opt):
@@ -152,32 +154,23 @@ def format_box(bbox,fw,fh):
 
 if __name__ == '__main__':
     # img,a,b = get_data(r'E:\Challenge\MOTSChallenge\train\images\0002\000001.jpg',False)
-    img = cv2.imread(r'E:\Challenge\MOTSChallenge\train\images\0002\000001.jpg')
-    print(img.shape)
-    img=cv2.resize(img,(2048,1024))  #修改图片的尺寸
-    # img, _, _, _ = letterbox(img, height=1024, width=2048)
+    # img = cv2.imread(r'E:\Challenge\MOTSChallenge\train\images\0002\000001.jpg')
+    # print(img.shape)
+    # img=cv2.resize(img,(2048,1024))  #修改图片的尺寸
+    # # img, _, _, _ = letterbox(img, height=1024, width=2048)
     # img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    print(img.shape)
-    img = img[:, :, :].transpose(2, 0, 1)
-    img = np.ascontiguousarray(img, dtype=np.float32)
-    img /= 255.0
-    img = torch.from_numpy(img)
-    img=img[None]
-    # x = torch.randn(1,1,1024,2048)
-    print(img.shape)
-    fh,fw  = img.shape[-2:]
-    print(fw,fh)
-    bbox = [1429, 399, 181, 349]
-    boxes =format_box(bbox,fw, fh)
-    # crops = torchvision.ops.roi_align(img, boxes, (28, 28))
 
-    roi_align = RoIAlign(28, 28, 0.03125)
-    # print(fm.shape,boxes,bbox)
-    crops = roi_align(img, boxes, torch.tensor([0], dtype=torch.int))  # 输入必须是tensor，不能是numpy
-    # crops = torchvision.ops.roi_align(fm, boxes, (28, 28))[0].unsqueeze(0)
+    # x = torch.randn(3,3,1024,2048).cuda()
+    # net = GeneralizedRCNN().cuda()
+    # seg = SegHead([2048, 1024]).cuda()
+    # backbone.load_state_dict(
+    #     torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(999) + '.pth'),
+    #                map_location=lambda storage, loc: storage))
+    # seghead.load_state_dict(
+    #     torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(999) + '.pth'),
+    #                map_location=lambda storage, loc: storage))
 
-
-    print(crops.shape)
-    # for i in range(5):
-    plt.imshow(crops[0][0])
-    plt.show()
+    id = set()
+    id.add(1)
+    if 1 in id:
+        print("yes")

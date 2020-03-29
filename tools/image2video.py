@@ -5,7 +5,7 @@ def output_video(imgPath):
     fps = 16
     size = (1920,1080)
 
-    sequence = 11
+    sequence = 5
 
     videowriter = cv2.VideoWriter("{:04}.avi".format(sequence), cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), fps, size)
 
@@ -21,4 +21,4 @@ def output_video(imgPath):
 
 
 if __name__=="__main__":
-    output_video(r"E:\Challenge\MOTSChallenge\train\images\0011")
+    output_video(r"E:\Challenge\mots_tools\mots_vis\result\0005")

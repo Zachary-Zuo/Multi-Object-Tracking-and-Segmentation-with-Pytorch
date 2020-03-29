@@ -36,11 +36,11 @@ def main(sequence):
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(32) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(88) + '.pth'),
                        map_location=lambda storage, loc: storage))
 
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(32) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(88) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     backbone=backbone.cuda()
@@ -144,11 +144,11 @@ def main(sequence):
     file.close()
 
 if __name__ == "__main__":
-    # main(2)
-    # print("finish:2")
-    main(5)
-    print("finish:5")
-    # main(9)
-    # print("finish:9")
-    # main(11)
-    # print("finish:11")
+    main(2)
+    print("finish:2")
+    # main(5)
+    # print("finish:5")
+    main(9)
+    print("finish:9")
+    main(11)
+    print("finish:11")

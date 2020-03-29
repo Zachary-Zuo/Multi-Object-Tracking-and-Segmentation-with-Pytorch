@@ -50,11 +50,11 @@ def main(sequence):
     SegHeadName = "seghead"
 
     backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(32) + '.pth'),
+            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(112) + '.pth'),
                        map_location=lambda storage, loc: storage))
 
     seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(32) + '.pth'),
+        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(112) + '.pth'),
                    map_location=lambda storage, loc: storage))
 
     backbone=backbone.cuda()
