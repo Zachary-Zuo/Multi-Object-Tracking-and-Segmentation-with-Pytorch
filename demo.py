@@ -24,6 +24,7 @@ import dataloaders.MOTS_dataloaders as ms
 import dataloaders.Demo_dataloader as de
 from network.fpn import FPN101
 from network.GeneralizedRCNN import GeneralizedRCNN
+from torch.utils.tensorboard import SummaryWriter
 
 def get_img_size(sequence):
     if sequence==5 or sequence==6:
@@ -77,6 +78,9 @@ def main(sequence):
             inputs, bbox,track_list = sample_batched["img"],sample_batched["bbox"],sample_batched["track"]
 
             inputs = inputs.cuda()
+            writer=SummaryWriter()
+            writer.add_graph(backbone,(inputs,))
+            writer.close()
             feature = backbone(inputs)
 
             output_list = []

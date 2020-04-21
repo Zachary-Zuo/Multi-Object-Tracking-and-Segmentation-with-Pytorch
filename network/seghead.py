@@ -46,6 +46,7 @@ class SegHead(nn.Module):
         self.img_width=img_size[0]
         self.feature_height=math.ceil(self.img_height/16)
         self.feature_width = math.ceil(self.img_width / 16)
+        self.s_mask = nn.Parameter(-9.9 * torch.ones(1))
 
         self.crop_height = 28
         # self.crop_width = 14
@@ -76,14 +77,17 @@ class SegHead(nn.Module):
         )
         nn.init.constant_(self.mask_fcn_logits.bias, 0)
 
-    def pooler(self,fms,bbox=None,level=3):
+    def pooler(self,fms,bbox=None,level=2):
         if bbox==None:
             return fms[level]
         else:
-            roi_level = min(3,max(0,5+math.log2(math.sqrt(bbox[2]*bbox[3])/math.sqrt(self.img_width*self.img_height))))
+            a = math.sqrt(bbox[2]*bbox[3])/math.sqrt(self.img_width*self.img_height)
+            if a==0:
+                a+=0.01
+            roi_level = min(2,max(0,5+math.log2(a)))
             roi_level = int(roi_level)
-
-            fm = fms[3]
+            # print(roi_level,bbox[2]*bbox[3])
+            fm = fms[roi_level]
             fh, fw = fm.shape[-2:]
             sampling_ratio = 0.03125/(2**roi_level)
             if not self.training:
@@ -101,30 +105,55 @@ class SegHead(nn.Module):
                 return crops
 
 
-    def forward(self,fms,bbox_list=None,level=3):
+    def forward(self,fms,bbox_list=None,gts=None,level=2):
         if bbox_list ==None:
-            out = self.pooler(fms,level=level)
-            for layer_name in self.blocks:
-                out = F.relu(getattr(self, layer_name)(out))
-            out = self.conv5_mask(out)
-            out = self.mask_fcn_logits(out)
-            return out
+            loss = []
+            x = []
+            for l in range(3):
+                out = self.pooler(fms,level=l)
+                for layer_name in self.blocks:
+                    out = F.relu(getattr(self, layer_name)(out))
+                out = self.conv5_mask(out)
+                out = self.mask_fcn_logits(out)
+                # plt.imshow(out[0][0].detach().cpu().numpy())
+                # plt.show()
+                if self.training:
+                    maskloss = F.binary_cross_entropy_with_logits(out, gts[l])
+                    loss.append(maskloss)
+                else:
+                    x.append(out.squeeze())
+            if self.training:
+                maskloss = sum(loss)
+                return maskloss * torch.exp(-self.s_mask) * 0.5 + self.s_mask * 0.5, maskloss.item()
+            else:
+                return x
+
+            # return out
 
         else:
             x=[]
             for bbox in bbox_list:
                 bbox = bbox.squeeze()
+                assert bbox[0]>=0 and bbox[1]>=0 and bbox[0]<bbox[2] and bbox[1]<bbox[3]
                 out = self.pooler(fms,bbox)
                 for layer_name in self.blocks:
                     out = F.relu(getattr(self, layer_name)(out))
                 out = self.conv5_mask(out)
                 out = self.mask_fcn_logits(out)
                 if not self.training:
-                    # zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
-                    # out = zoom_roi_align(out, self.zoomboxes, self.box_index)
-                    zoom = torch.Tensor([0, 0, 0, 56, 56]).cuda()
-                    out = torchvision.ops.roi_align(out,zoom,(bbox[3], bbox[2]))[0]
+                    zoom_roi_align = RoIAlign(bbox[3], bbox[2], 0.25)
+                    out = zoom_roi_align(out, self.zoomboxes, self.box_index)
+                    # zoom = torch.Tensor([0, 0, 0, 56, 56])
+                    # out = torchvision.ops.roi_align(out,zoom,(bbox[3], bbox[2]))[0]
+                    # plt.imshow(out.squeeze().detach().cpu().numpy())
+                    # plt.show()
+                # plt.imshow(out.detach().cpu().numpy())
+                # plt.show()
                 x.append(out.squeeze())
+            if self.training:
+                out = torch.cat(x)
+                maskloss = F.binary_cross_entropy_with_logits(out, gts)
+                return  maskloss* torch.exp(-self.s_mask)*0.5 +self.s_mask*0.5,maskloss.item()
             return x
 
 
@@ -142,18 +171,18 @@ class SegHead(nn.Module):
                               (bbox[3]+bbox[1]) / self.img_width * fw])
 
 def initialize_net(net):
-    pretrained_dict = torch.load('model_final.pth')
+    pretrained_dict = torch.load('seghead_epoch-999.pth',map_location='cuda:0')
     model_dict = net.state_dict()
-    pretrained_dict = pretrained_dict['model']
+    # pretrained_dict = pretrained_dict['model']
     pret = {}
     for mk in model_dict.keys():
+        pret[mk]=model_dict[mk]
         for k,v in pretrained_dict.items():
             if mk in k:
-                if 'logits' not in mk:
-                    pret[mk]=v
-                else:
-                    pret[mk]=v[1].unsqueeze(0)
+                pret[mk]=v
                 continue
+
+
     print(pret.keys())
     model_dict.update(pret)
     net.load_state_dict(model_dict)
@@ -163,4 +192,4 @@ if __name__=='__main__':
     net = SegHead((2048,1024))
     initialize_net(net)
 
-    torch.save(net.state_dict(), 'SegHead.pth')
+    torch.save(net.state_dict(), 'seghead_epoch-999.pth')

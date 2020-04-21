@@ -6,7 +6,6 @@ import torch.utils.data
 from collections import OrderedDict
 
 
-
 class FrozenBatchNorm2d(nn.Module):
     """
     BatchNorm2d where the batch statistics and the affine parameters
@@ -285,7 +284,7 @@ class GeneralizedRCNN(nn.Module):
         super(GeneralizedRCNN, self).__init__()
         self.backbone = nn.Sequential(OrderedDict([
                   ('body', ResNet()),
-                  ('fpn', FPN([256,512,1024,2048],256,nn.Conv2d,LastLevelMaxPool)),
+                  ('fpn', FPN([256,512,1024,2048],792,nn.Conv2d,LastLevelMaxPool)),
                 ]))
 
     def forward(self, x):
@@ -304,17 +303,26 @@ def initialize_net(net):
     for mk in model_dict.keys():
         for k, v in pretrained_dict.items():
             if mk in k:
-                pret[mk] = v
+                if 'fpn' in mk:
+                    if 'bias' in mk or 'inner' in mk:
+                        pret[mk]=torch.cat([v]*4)[:792]
+                    else:
+                        ww = torch.cat([v] * 4)[:792]
+                        ww = torch.cat([ww,ww,ww,ww],1)
+                        pret[mk] = ww[:,:792]
+                else:
+                    pret[mk] = v
                 continue
     print(pret.keys())
     model_dict.update(pret)
     net.load_state_dict(model_dict)
 
 if __name__=='__main__':
-    # x = torch.randn(3,3,1024,2048).cuda()
-    net = GeneralizedRCNN()
-    initialize_net(net)
-    torch.save(net.state_dict(), 'GeneralizedRCNN.pth')
-    # out = net(x)
-    # for o  in out:
-    #     print(o.shape)
+    x = torch.randn(1,3,1024,2048).cuda()
+    net = GeneralizedRCNN().cuda()
+    # print(net)
+    # initialize_net(net)
+    # torch.save(net.state_dict(), 'GeneralizedRCNN.pth')
+    out = net(x)
+    for o in out:
+        print(o.shape)

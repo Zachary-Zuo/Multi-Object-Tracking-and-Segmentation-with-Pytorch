@@ -56,12 +56,12 @@ def main(cfg):
     BackBoneName = "GeneralizedRCNN"
     SegHeadName = "seghead"
 
-    backbone.load_state_dict(
-            torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(24) + '.pth'),
-                       map_location=lambda storage, loc: storage))
-    seghead.load_state_dict(
-        torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(24) + '.pth'),
-                   map_location=lambda storage, loc: storage))
+    # backbone.load_state_dict(
+    #         torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(24) + '.pth'),
+    #                    map_location=lambda storage, loc: storage))
+    # seghead.load_state_dict(
+    #     torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(24) + '.pth'),
+    #                map_location=lambda storage, loc: storage))
 
     # Logging into Tensorboard
     log_dir = os.path.join(save_dir, 'runs', datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname())

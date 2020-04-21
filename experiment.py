@@ -11,6 +11,8 @@ import torchvision
 from roi_align import RoIAlign
 from network.seghead import SegHead
 from network.GeneralizedRCNN import GeneralizedRCNN
+from network.YoLoLayer import YOLOLayer
+from network.Darknet import Darknet,parse_model_cfg
 
 
 def track(opt):
@@ -159,9 +161,26 @@ if __name__ == '__main__':
     # img=cv2.resize(img,(2048,1024))  #修改图片的尺寸
     # # img, _, _, _ = letterbox(img, height=1024, width=2048)
     # img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    cfg ='cfg/yolov3_1088x608.cfg'
+    cfg_dict = parse_model_cfg(cfg)
+    img1=608
+    img2=1088
+    x = torch.randn(1,3,img1,img2).cuda()
+    net = Darknet(cfg_dict,548).cuda()
 
-    # x = torch.randn(3,3,1024,2048).cuda()
-    # net = GeneralizedRCNN().cuda()
+    targets = torch.ones(1,9,6).cuda()
+    targetslen = torch.Tensor([[9,]]).cuda()
+    loss, components ,featuremap = net(x,targets,targetslen)
+    for f in featuremap:
+        print(f.shape)
+
+
+
+
+
+
+
+
     # seg = SegHead([2048, 1024]).cuda()
     # backbone.load_state_dict(
     #     torch.load(os.path.join(save_dir, BackBoneName + '_epoch-' + str(999) + '.pth'),
@@ -169,8 +188,3 @@ if __name__ == '__main__':
     # seghead.load_state_dict(
     #     torch.load(os.path.join(save_dir, SegHeadName + '_epoch-' + str(999) + '.pth'),
     #                map_location=lambda storage, loc: storage))
-
-    id = set()
-    id.add(1)
-    if 1 in id:
-        print("yes")
